@@ -1,8 +1,4 @@
-.PHONY: lint fmt
-
-lint:
-	./scripts/lint.sh
+.PHONY: fmt
 
 fmt:
 	./scripts/fmt.sh
-
