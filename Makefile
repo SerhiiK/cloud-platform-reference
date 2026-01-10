@@ -1,4 +1,4 @@
-.PHONY: lint fmt
+.PHONY: lint fmt kind-cluster
 
 lint:
 	./scripts/lint.sh
@@ -6,3 +6,5 @@ lint:
 fmt:
 	./scripts/fmt.sh
 
+kind-cluster:
+	./scripts/kind_cluster.sh
