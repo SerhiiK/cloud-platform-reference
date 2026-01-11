@@ -1,0 +1,37 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Env/local config
+.env
+.env.*
+
+# Terraform/Terragrunt
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terragrunt-cache/
+
+# Kubernetes/Helm
+*.kubeconfig
+.kube/
+charts/*.tgz
+
+# Build artifacts
+bin/
+dist/
+build/
