@@ -32,9 +32,35 @@ else
   GIT_REPO_BASE="https://github.com/${GIT_REPO_OWNER}/${GIT_REPO_NAME}.git"
 fi
 
+REPO_ROOT="$SCRIPT_DIR/.."
+BOOTSTRAP_DIR="$REPO_ROOT/platform/clusters/${CLUSTER_NAME}/bootstrap"
+BOOTSTRAP_APP_DIR="$BOOTSTRAP_DIR/argo-cd"
 BOOTSTRAP_REPO="${GIT_REPO_BASE}/platform/clusters/${CLUSTER_NAME}"
+BOOTSTRAP_APP_REPO="${GIT_REPO_BASE%.git}/platform/clusters/${CLUSTER_NAME}/bootstrap/argo-cd"
 
-argocd-autopilot repo bootstrap \
-  --provider github \
-  --repo "$BOOTSTRAP_REPO" \
-  --git-token "$ARGOCD_AUTOPILOT_TOKEN"
+autopilot_args=(
+  repo
+  bootstrap
+  --provider
+  github
+  --repo
+  "$BOOTSTRAP_REPO"
+  --git-token
+  "$ARGOCD_AUTOPILOT_TOKEN"
+)
+
+if [ -d "$BOOTSTRAP_DIR" ]; then
+  if [ ! -d "$BOOTSTRAP_APP_DIR" ]; then
+    echo "Bootstrap directory exists, but Argo CD manifests are missing in: $BOOTSTRAP_APP_DIR" >&2
+    exit 1
+  fi
+
+  echo "Bootstrap already exists in $BOOTSTRAP_DIR; running argocd-autopilot in recovery mode."
+  autopilot_args+=(
+    --recover
+    --app
+    "$BOOTSTRAP_APP_REPO"
+  )
+fi
+
+argocd-autopilot "${autopilot_args[@]}"
