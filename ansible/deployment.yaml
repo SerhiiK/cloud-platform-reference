@@ -1,5 +1,5 @@
 ---
-- name: homelab
+- name: Provision homelab GPU nodes
   hosts: all
   become: true
   remote_user: ubuntu
