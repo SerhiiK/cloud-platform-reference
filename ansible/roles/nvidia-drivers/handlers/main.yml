@@ -1,0 +1,10 @@
+---
+- name: Rebuild initramfs
+  ansible.builtin.command: update-initramfs -u
+  changed_when: true
+
+- name: Reboot host
+  ansible.builtin.reboot:
+    reboot_timeout: "{{ nvidia_driver_reboot_timeout | int }}"
+    msg: Rebooting to activate the NVIDIA driver (Ansible nvidia-drivers role)
+  when: nvidia_driver_reboot | bool
