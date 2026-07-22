@@ -1,19 +1,19 @@
 # Ansible — homelab provisioning
 
-Ansible-код для налаштування homelab-нод. Наразі містить роль
-[`nvidia-drivers`](roles/nvidia-drivers/README.md), яка встановлює пропрієтарний
-драйвер NVIDIA на Ubuntu Server.
+Ansible code for configuring homelab nodes. It currently contains the
+[`nvidia-drivers`](roles/nvidia-drivers/README.md) role, which installs the
+proprietary NVIDIA driver on Ubuntu Server.
 
-## Структура
+## Layout
 
 ```
 ansible/
-├── deployment.yaml            # головний playbook
-├── inventory.ini              # хости (homelab)
+├── deployment.yaml            # main playbook
+├── inventory.ini              # hosts (homelab)
 ├── roles/
-│   └── nvidia-drivers/        # роль встановлення драйвера NVIDIA
-├── .ansible-lint              # конфіг ansible-lint
-└── .yamllint                  # конфіг yamllint
+│   └── nvidia-drivers/        # NVIDIA driver installation role
+├── .ansible-lint              # ansible-lint config
+└── .yamllint                  # yamllint config
 ```
 
 Inventory:
@@ -26,32 +26,32 @@ gpu-node ansible_host=192.168.0.102
 ansible_user=ubuntu
 ```
 
-## Передумови
+## Prerequisites
 
-- Ansible на керуючій машині: `pip install ansible-core` (або `brew install ansible`).
-- `sshpass` — потрібен для парольної автентифікації (`--ask-pass`):
+- Ansible on the control machine: `pip install ansible-core` (or `brew install ansible`).
+- `sshpass` — required for password authentication (`--ask-pass`):
   - macOS: `brew install hudochenkov/sshpass/sshpass`
   - Ubuntu: `sudo apt install sshpass`
-- Мережевий доступ до ноди по SSH (порт 22).
+- Network access to the node over SSH (port 22).
 
-## 1. Перевірити зв'язок з машиною
+## 1. Check connectivity to the machine
 
-### ICMP-ping (просто чи жива нода в мережі)
+### ICMP ping (is the node alive on the network)
 
 ```bash
 ping -c 4 192.168.0.102
 ```
 
-### Ansible-ping (перевіряє SSH + автентифікацію + Python на ноді)
+### Ansible ping (checks SSH + authentication + Python on the node)
 
-Це головна перевірка — вона підтверджує, що Ansible реально може керувати нодою,
-а не лише що вона відповідає в мережі.
+This is the main check — it confirms Ansible can actually manage the node, not
+just that it responds on the network.
 
 ```bash
 ansible -i inventory.ini homelab -m ping --ask-pass
 ```
 
-Очікувана відповідь:
+Expected response:
 
 ```
 gpu-node | SUCCESS => {
@@ -61,56 +61,58 @@ gpu-node | SUCCESS => {
 }
 ```
 
-> При першому підключенні SSH запитає підтвердження host key. Щоб не заважало
-> в автоматиці: `export ANSIBLE_HOST_KEY_CHECKING=False` (ок для homelab).
+> On the first connection SSH will ask you to confirm the host key. To skip that
+> in automation: `export ANSIBLE_HOST_KEY_CHECKING=False` (fine for a homelab).
 
-Якщо на ноді налаштований SSH-ключ замість пароля — прибери `--ask-pass`.
+If the node uses an SSH key instead of a password, drop `--ask-pass`.
 
-## 2. Запустити роль
+## 2. Run the role
 
-Паролі **не зберігаються** в репо — запитуються під час запуску:
+Passwords are **not stored** in the repo — they are prompted at run time:
 
-- `--ask-pass` (`-k`) — SSH-пароль користувача `ubuntu`
-- `--ask-become-pass` (`-K`) — sudo-пароль (роль ставить пакети через `become`)
+- `--ask-pass` (`-k`) — SSH password for the `ubuntu` user
+- `--ask-become-pass` (`-K`) — sudo password (the role installs packages via `become`)
 
-### Перевірка перед реальним запуском (dry-run)
+### Dry run before applying
 
 ```bash
 ansible-playbook -i inventory.ini deployment.yaml --ask-pass --ask-become-pass --check --diff
 ```
 
-### Реальний запуск
+### Actual run
 
 ```bash
 ansible-playbook -i inventory.ini deployment.yaml --ask-pass --ask-become-pass
 ```
 
-Тільки завдання з тегом `nvidia`:
+Only tasks tagged `nvidia`:
 
 ```bash
 ansible-playbook -i inventory.ini deployment.yaml --ask-pass --ask-become-pass --tags nvidia
 ```
 
-> ⚠️ Роль **перезавантажить ноду**, коли це потрібно для активації драйвера
-> (керується змінною `nvidia_driver_reboot`, за замовчуванням `true`).
+> ⚠️ The role will **reboot the node** when required to activate the driver
+> (controlled by the `nvidia_driver_reboot` variable, `true` by default).
 
-### Що робить роль
+### What the role does
 
-Встановлює `nvidia-driver-580-server` (остання гілка з підтримкою Pascal / GTX 1050),
-блокує `nouveau`, за потреби перезавантажує ноду й перевіряє результат через
-`nvidia-smi`. Змінні та деталі — у [roles/nvidia-drivers/README.md](roles/nvidia-drivers/README.md).
+Installs `nvidia-driver-580-server` (the last branch supporting Pascal / GTX 1050),
+blacklists `nouveau`, reboots the node if needed, and verifies the result with
+`nvidia-smi`. Variables and details are in
+[roles/nvidia-drivers/README.md](roles/nvidia-drivers/README.md).
 
-## 3. Перевірити результат
+## 3. Verify the result
 
-Після завершення playbook виводить `nvidia-smi`. Вручну на ноді:
+When the playbook finishes it prints `nvidia-smi`. Manually on the node:
 
 ```bash
 ssh ubuntu@192.168.0.102 nvidia-smi
 ```
 
-## Лінтинг (локально)
+## Linting (locally)
 
-CI (`.github/workflows/ansible-ci.yml`) ганяє це на кожен PR, але можна й локально:
+CI (`.github/workflows/ansible-ci.yml`) runs this on every PR, but you can run it
+locally too:
 
 ```bash
 pip install ansible-lint yamllint
