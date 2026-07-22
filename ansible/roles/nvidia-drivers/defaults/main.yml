@@ -1,0 +1,35 @@
+---
+# Which driver branch/package to install.
+#
+# - "auto": let `ubuntu-drivers` pick the recommended driver for the detected GPU.
+# - "<package>": install a specific package, e.g. "nvidia-driver-550-server"
+#   (the "-server" branches are the recommended, longer-lived branches for
+#   headless / datacenter Ubuntu hosts).
+#
+# Pinned to 580-server: the newest driver branch that still fully supports the
+# Pascal GPU (GTX 1050 / GP107) targeted by this platform — branch 590+ drops
+# Pascal/Maxwell/Volta. 580 is a Production Branch with critical security
+# updates through Oct 2028. Available on Ubuntu 24.04/22.04 in `restricted`.
+# Set to "auto" to let ubuntu-drivers pick instead.
+nvidia_driver_package: nvidia-driver-580-server
+
+# When nvidia_driver_package == "auto", prefer the "-server" driver branch
+# (recommended for headless servers) over the desktop branch.
+nvidia_driver_use_server_branch: true
+
+# Blacklist the open-source `nouveau` driver. Required before the proprietary
+# NVIDIA driver can bind to the GPU.
+nvidia_driver_blacklist_nouveau: true
+
+# Reboot the host automatically when the driver install (or nouveau blacklist)
+# requires it. Set to false in environments where reboots are orchestrated
+# externally — the role will still report that a reboot is pending.
+nvidia_driver_reboot: true
+
+# Seconds to wait for the host to come back after an automatic reboot.
+nvidia_driver_reboot_timeout: 600
+
+# Run `nvidia-smi` at the end to verify the driver loaded. Skipped when a
+# reboot was needed but nvidia_driver_reboot is false (the driver is not yet
+# active in that case).
+nvidia_driver_verify: true

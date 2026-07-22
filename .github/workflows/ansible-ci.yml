@@ -1,0 +1,46 @@
+name: ansible-ci
+
+# Lint and validate the Ansible code on every PR that touches the ansible/ tree.
+on:
+  pull_request:
+    paths:
+      - "ansible/**"
+      - ".github/workflows/ansible-ci.yml"
+
+# Cancel superseded runs on the same PR.
+concurrency:
+  group: ansible-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: ansible
+
+jobs:
+  lint:
+    name: Lint & syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Ansible tooling
+        run: pip install ansible-core ansible-lint yamllint
+
+      - name: yamllint
+        run: yamllint .
+
+      - name: ansible-lint
+        run: ansible-lint
+
+      - name: Playbook syntax check
+        run: ansible-playbook --syntax-check -i inventory.ini deployment.yaml

@@ -1,0 +1,8 @@
+---
+- name: homelab
+  hosts: all
+  become: true
+  remote_user: ubuntu
+  roles:
+    - role: nvidia-drivers
+      tags: [nvidia]

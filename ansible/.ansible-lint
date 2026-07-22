@@ -1,0 +1,9 @@
+---
+# https://ansible.readthedocs.io/projects/lint/configuring/
+profile: production
+
+exclude_paths:
+  - .github/
+
+# inventory.ini is intentionally empty in the repo (hosts are provided at
+# deploy time), so skip the "no hosts" style complaints.

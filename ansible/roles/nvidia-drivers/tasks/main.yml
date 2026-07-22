@@ -1,0 +1,134 @@
+---
+- name: Ensure the host is running Ubuntu
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == 'Ubuntu'
+    fail_msg: >-
+      The nvidia-drivers role only supports Ubuntu (detected
+      {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}).
+    quiet: true
+
+- name: Install build prerequisites for the DKMS kernel module
+  ansible.builtin.apt:
+    name:
+      - build-essential
+      - dkms
+      - "linux-headers-{{ ansible_facts['kernel'] }}"
+      - ubuntu-drivers-common
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Blacklist the nouveau driver
+  when: nvidia_driver_blacklist_nouveau | bool
+  block:
+    - name: Write nouveau blacklist configuration
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/blacklist-nouveau.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # Managed by Ansible (nvidia-drivers role)
+          blacklist nouveau
+          options nouveau modeset=0
+      notify:
+        - Rebuild initramfs
+        - Reboot host
+
+    - name: Unload the nouveau module if currently loaded
+      ansible.builtin.command: modprobe -r nouveau
+      register: nvidia_nouveau_unload
+      changed_when: nvidia_nouveau_unload.rc == 0
+      failed_when: false
+
+- name: Detect the recommended NVIDIA driver package
+  when: nvidia_driver_package == 'auto'
+  block:
+    - name: Query ubuntu-drivers for available devices
+      ansible.builtin.command: ubuntu-drivers devices
+      register: nvidia_ubuntu_drivers
+      changed_when: false
+      failed_when: false
+
+    - name: Collect all NVIDIA driver packages ubuntu-drivers reported
+      ansible.builtin.set_fact:
+        nvidia_driver_candidates: >-
+          {{
+            nvidia_ubuntu_drivers.stdout_lines
+              | map('regex_search', 'nvidia-driver-[0-9]+(-server)?')
+              | select('string')
+              | list | unique
+          }}
+        nvidia_driver_recommended: >-
+          {{
+            (nvidia_ubuntu_drivers.stdout_lines
+              | select('search', 'recommended')
+              | map('regex_search', 'nvidia-driver-[0-9]+(-server)?')
+              | select('string')
+              | list
+              | first) | default('')
+          }}
+
+    - name: Resolve the NVIDIA driver package name
+      ansible.builtin.set_fact:
+        # Prefer the newest -server branch when requested; otherwise fall back to
+        # whatever ubuntu-drivers marks as recommended.
+        nvidia_driver_resolved_package: >-
+          {{
+            (
+              (nvidia_driver_candidates | select('search', '-server$') | list | sort | last)
+              if (nvidia_driver_use_server_branch | bool
+                  and (nvidia_driver_candidates | select('search', '-server$') | list | length > 0))
+              else nvidia_driver_recommended
+            )
+          }}
+
+    - name: Fail when no recommended NVIDIA driver could be detected
+      ansible.builtin.fail:
+        msg: >-
+          `ubuntu-drivers devices` did not report a recommended NVIDIA driver.
+          Set `nvidia_driver_package` explicitly (e.g. nvidia-driver-550-server)
+          or confirm an NVIDIA GPU is present.
+      when: nvidia_driver_resolved_package | length == 0
+
+- name: Select the pinned NVIDIA driver package
+  ansible.builtin.set_fact:
+    nvidia_driver_resolved_package: "{{ nvidia_driver_package }}"
+  when: nvidia_driver_package != 'auto'
+
+- name: Install the NVIDIA driver package
+  ansible.builtin.apt:
+    name: "{{ nvidia_driver_resolved_package }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  register: nvidia_driver_install
+  notify: Reboot host
+
+- name: Flush handlers so any required reboot happens before verification
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify the NVIDIA driver is loaded
+  when:
+    - nvidia_driver_verify | bool
+    - nvidia_driver_reboot | bool or not nvidia_driver_install.changed
+  block:
+    - name: Run nvidia-smi
+      ansible.builtin.command: nvidia-smi
+      register: nvidia_smi
+      changed_when: false
+
+    - name: Show nvidia-smi output
+      ansible.builtin.debug:
+        var: nvidia_smi.stdout_lines
+
+- name: Warn that a reboot is still required
+  ansible.builtin.debug:
+    msg: >-
+      The NVIDIA driver was installed but a reboot is required to activate it.
+      Automatic reboot is disabled (nvidia_driver_reboot=false) — reboot this
+      host manually to finish.
+  when:
+    - nvidia_driver_install.changed
+    - not (nvidia_driver_reboot | bool)
