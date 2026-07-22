@@ -16,8 +16,9 @@
       - "linux-headers-{{ ansible_facts['kernel'] }}"
       - ubuntu-drivers-common
     state: present
+    # Always refresh the index first: on fresh releases a stale cache can point
+    # at package versions that have already been superseded (apt 404 on fetch).
     update_cache: true
-    cache_valid_time: 3600
 
 - name: Blacklist the nouveau driver
   when: nvidia_driver_blacklist_nouveau | bool
@@ -102,7 +103,6 @@
     name: "{{ nvidia_driver_resolved_package }}"
     state: present
     update_cache: true
-    cache_valid_time: 3600
   register: nvidia_driver_install
   notify: Reboot host
 
