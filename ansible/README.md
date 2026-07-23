@@ -17,7 +17,8 @@ ansible/
 ├── roles/
 │   └── nvidia-drivers/        # NVIDIA driver installation role (local)
 ├── .ansible-lint              # ansible-lint config
-└── .yamllint                  # yamllint config
+├── .yamllint                  # yamllint config
+└── .gitignore                 # ignores locally-installed Galaxy roles
 ```
 
 Inventory:
@@ -74,12 +75,12 @@ gpu-node | SUCCESS => {
 
 If the node uses an SSH key instead of a password, drop `--ask-pass`.
 
-## 2. Run the role
+## 2. Run the playbook
 
 Passwords are **not stored** in the repo — they are prompted at run time:
 
 - `--ask-pass` (`-k`) — SSH password for the connection user (`serhii`)
-- `--ask-become-pass` (`-K`) — sudo password (the role installs packages via `become`)
+- `--ask-become-pass` (`-K`) — sudo password (the roles install packages via `become`)
 
 ### Dry run before applying
 
