@@ -23,7 +23,7 @@ Inventory:
 gpu-node ansible_host=192.168.0.102
 
 [homelab:vars]
-ansible_user=ubuntu
+ansible_user=serhii
 ```
 
 ## Prerequisites
@@ -70,7 +70,7 @@ If the node uses an SSH key instead of a password, drop `--ask-pass`.
 
 Passwords are **not stored** in the repo — they are prompted at run time:
 
-- `--ask-pass` (`-k`) — SSH password for the `ubuntu` user
+- `--ask-pass` (`-k`) — SSH password for the connection user (`serhii`)
 - `--ask-become-pass` (`-K`) — sudo password (the role installs packages via `become`)
 
 ### Dry run before applying
@@ -106,7 +106,7 @@ blacklists `nouveau`, reboots the node if needed, and verifies the result with
 When the playbook finishes it prints `nvidia-smi`. Manually on the node:
 
 ```bash
-ssh ubuntu@192.168.0.102 nvidia-smi
+ssh serhii@192.168.0.102 nvidia-smi
 ```
 
 ## Linting (locally)
