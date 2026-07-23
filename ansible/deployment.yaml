@@ -2,7 +2,15 @@
 - name: Provision homelab GPU nodes
   hosts: all
   become: true
-  remote_user: ubuntu
   roles:
     - role: nvidia-drivers
       tags: [nvidia]
+
+    - role: geerlingguy.docker
+      tags: [docker]
+      vars:
+        docker_install_compose_plugin: true
+        # Add the connection user to the docker group so it can run docker
+        # without sudo (takes effect on next login).
+        docker_users:
+          - "{{ ansible_user }}"

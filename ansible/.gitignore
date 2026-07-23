@@ -1,0 +1,4 @@
+# Ansible Galaxy roles/collections installed via `ansible-galaxy install`
+.ansible/
+roles/geerlingguy.*/
+*.retry
