@@ -1,0 +1,7 @@
+---
+# Install with: ansible-galaxy install -r requirements.yml
+roles:
+  - name: geerlingguy.docker
+    version: "8.0.0"
+
+collections: []

@@ -1,8 +1,11 @@
 # Ansible — homelab provisioning
 
-Ansible code for configuring homelab nodes. It currently contains the
-[`nvidia-drivers`](roles/nvidia-drivers/README.md) role, which installs the
-proprietary NVIDIA driver on Ubuntu Server.
+Ansible code for configuring homelab nodes. It installs:
+
+- [`nvidia-drivers`](roles/nvidia-drivers/README.md) — a local role that installs
+  the proprietary NVIDIA driver on Ubuntu Server.
+- **Docker** — via the [`geerlingguy.docker`](https://galaxy.ansible.com/ui/standalone/roles/geerlingguy/docker/)
+  role from Ansible Galaxy (installs Docker CE + the Compose plugin).
 
 ## Layout
 
@@ -10,8 +13,9 @@ proprietary NVIDIA driver on Ubuntu Server.
 ansible/
 ├── deployment.yaml            # main playbook
 ├── inventory.ini              # hosts (homelab)
+├── requirements.yml           # Ansible Galaxy dependencies (Docker role)
 ├── roles/
-│   └── nvidia-drivers/        # NVIDIA driver installation role
+│   └── nvidia-drivers/        # NVIDIA driver installation role (local)
 ├── .ansible-lint              # ansible-lint config
 └── .yamllint                  # yamllint config
 ```
@@ -33,6 +37,10 @@ ansible_user=ubuntu
   - macOS: `brew install hudochenkov/sshpass/sshpass`
   - Ubuntu: `sudo apt install sshpass`
 - Network access to the node over SSH (port 22).
+- **Galaxy roles** — install the external dependencies once before running:
+  ```bash
+  ansible-galaxy install -r requirements.yml
+  ```
 
 ## 1. Check connectivity to the machine
 
@@ -85,29 +93,45 @@ ansible-playbook -i inventory.ini deployment.yaml --ask-pass --ask-become-pass -
 ansible-playbook -i inventory.ini deployment.yaml --ask-pass --ask-become-pass
 ```
 
-Only tasks tagged `nvidia`:
+Run a single role by tag — `nvidia` or `docker`:
 
 ```bash
 ansible-playbook -i inventory.ini deployment.yaml --ask-pass --ask-become-pass --tags nvidia
+ansible-playbook -i inventory.ini deployment.yaml --ask-pass --ask-become-pass --tags docker
 ```
 
-> ⚠️ The role will **reboot the node** when required to activate the driver
+> ⚠️ The NVIDIA role will **reboot the node** when required to activate the driver
 > (controlled by the `nvidia_driver_reboot` variable, `true` by default).
 
-### What the role does
+### What the playbook does
 
-Installs `nvidia-driver-580-server` (the last branch supporting Pascal / GTX 1050),
-blacklists `nouveau`, reboots the node if needed, and verifies the result with
-`nvidia-smi`. Variables and details are in
-[roles/nvidia-drivers/README.md](roles/nvidia-drivers/README.md).
+- **nvidia-drivers**: installs `nvidia-driver-580-server` (the last branch
+  supporting Pascal / GTX 1050), blacklists `nouveau`, reboots if needed, and
+  verifies with `nvidia-smi`. Details in
+  [roles/nvidia-drivers/README.md](roles/nvidia-drivers/README.md).
+- **geerlingguy.docker**: adds Docker's apt repo, installs Docker CE + the
+  Compose plugin, and adds the connection user (`ansible_user`) to the `docker`
+  group. Configured in `deployment.yaml`; full variable reference on
+  [the role's Galaxy page](https://galaxy.ansible.com/ui/standalone/roles/geerlingguy/docker/).
+
+> **Note on brand-new Ubuntu releases:** the Docker role derives the apt repo
+> from the host's release codename. If Docker has not yet published packages for
+> your codename (`apt` 404 on `download.docker.com`), pin the repo to the latest
+> LTS codename, e.g. `-e docker_apt_release_channel=stable` and override the
+> suite, or wait for Docker to publish it.
 
 ## 3. Verify the result
 
-When the playbook finishes it prints `nvidia-smi`. Manually on the node:
+When the playbook finishes the NVIDIA role prints `nvidia-smi`. Manually on the node:
 
 ```bash
-ssh ubuntu@192.168.0.102 nvidia-smi
+ssh ubuntu@192.168.0.102 nvidia-smi        # GPU driver
+ssh ubuntu@192.168.0.102 docker run --rm hello-world   # Docker
 ```
+
+> The user is added to the `docker` group during the run, but that only takes
+> effect on the **next login** — reconnect (or `newgrp docker`) before running
+> `docker` without sudo.
 
 ## Linting (locally)
 
@@ -116,6 +140,7 @@ locally too:
 
 ```bash
 pip install ansible-lint yamllint
+ansible-galaxy install -r requirements.yml   # needed for the syntax check to resolve the Docker role
 yamllint .
 ansible-lint
 ansible-playbook --syntax-check -i inventory.ini deployment.yaml
