@@ -27,7 +27,7 @@ Inventory:
 gpu-node ansible_host=192.168.0.102
 
 [homelab:vars]
-ansible_user=ubuntu
+ansible_user=serhii
 ```
 
 ## Prerequisites
@@ -78,7 +78,7 @@ If the node uses an SSH key instead of a password, drop `--ask-pass`.
 
 Passwords are **not stored** in the repo — they are prompted at run time:
 
-- `--ask-pass` (`-k`) — SSH password for the `ubuntu` user
+- `--ask-pass` (`-k`) — SSH password for the connection user (`serhii`)
 - `--ask-become-pass` (`-K`) — sudo password (the role installs packages via `become`)
 
 ### Dry run before applying
@@ -125,8 +125,8 @@ ansible-playbook -i inventory.ini deployment.yaml --ask-pass --ask-become-pass -
 When the playbook finishes the NVIDIA role prints `nvidia-smi`. Manually on the node:
 
 ```bash
-ssh ubuntu@192.168.0.102 nvidia-smi        # GPU driver
-ssh ubuntu@192.168.0.102 docker run --rm hello-world   # Docker
+ssh serhii@192.168.0.102 nvidia-smi        # GPU driver
+ssh serhii@192.168.0.102 docker run --rm hello-world   # Docker
 ```
 
 > The user is added to the `docker` group during the run, but that only takes
