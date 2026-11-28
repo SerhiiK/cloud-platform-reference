@@ -19,12 +19,12 @@ spec:
             registry: ghcr.io
             repository: backstage/backstage
             tag: "1.55.2"
-          # Keep the image's bundled configs (catalog examples, guest auth); chart ConfigMap is appended last
+          # Load the image's base app-config.yaml (in-memory SQLite, guest auth); chart ConfigMap is appended last.
+          # app-config.production.yaml is skipped on purpose: its `backend.listen: ':7007'` (string) conflicts with
+          # the chart's hardcoded APP_CONFIG_backend_listen_port env (object) and crashes the backend on startup.
           args:
             - --config
             - app-config.yaml
-            - --config
-            - app-config.production.yaml
           # Demo image; access via: kubectl -n backstage port-forward svc/backstage 7007:7007
           appConfig:
             app:
@@ -35,6 +35,24 @@ spec:
               database:
                 client: better-sqlite3
                 connection: ":memory:"
+            auth:
+              providers:
+                guest:
+                  # Image runs with NODE_ENV=production; guest sign-in is disabled there by default
+                  dangerouslyAllowOutsideDevelopment: true
+            catalog:
+              # Base config paths are relative to packages/backend; the image runs from /app
+              locations:
+                - type: file
+                  target: ./examples/entities.yaml
+                - type: file
+                  target: ./examples/template/template.yaml
+                  rules:
+                    - allow: [Template]
+                - type: file
+                  target: ./examples/org.yaml
+                  rules:
+                    - allow: [User, Group]
           resources:
             requests:
               cpu: 100m
